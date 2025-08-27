@@ -7,5 +7,5 @@ router.register(r'movies', MovieViewSet)
 router.register(r'reviews', ReviewViewSet)
 urlpatterns = [
     path('', include(router.urls)),
-    path('api/register/', RegisterView.as_view(), name='register'),
+    path('cinemate/register/', RegisterView.as_view(), name='register'),
 ]
