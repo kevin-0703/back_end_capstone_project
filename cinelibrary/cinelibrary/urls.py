@@ -19,6 +19,6 @@ from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("cinemate/", include("cinemate.urls")),
+    path("", include("cinemate.urls")),
     path("cinemate/auth/token/", obtain_auth_token, name="cinemate_token_auth"),
 ]
