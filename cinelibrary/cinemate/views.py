@@ -5,7 +5,7 @@ from .serializers import MovieSerializer, ReviewSerializer, UserSerializer, Regi
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .tmdb import search_movies, get_movie_details
+from .tmdb_services import search_movies, get_movie_details
 
 # Create your views here.
 class RegisterView(generics.CreateAPIView):
