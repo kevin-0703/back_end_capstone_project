@@ -1,23 +1,70 @@
-from django.test import TestCase
-from rest_framework.test import APITestCase
+from django.urls import reverse
+from rest_framework.test import APITestCase, APIClient
+from rest_framework import status
 from django.contrib.auth.models import User
-from rest_framework.authtoken.models import Token
-from .models import Movie, Review
+from unittest.mock import patch
+from .models import Review, Movie
 
-# Create your tests here.
-class MovieReviewAPITest(APITestCase):
+class OMDbAPITests(APITestCase):
+
     def setUp(self):
-        self.user = User.objects.create_user(username="kevin", password="pass1234")
-        self.token = Token.objects.create(user=self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token.key}')
+        self.client = APIClient()
+        self.user = User.objects.create_user(username="testuser", password="testpass")
+        self.client.force_authenticate(user=self.user)  # authenticate for endpoints requiring login
 
+    @patch('cinemate.views.requests.get')
+    def test_omdb_movies_endpoint(self, mock_get):
+        # Mock OMDb response
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "Search": [
+                {"Title": "Mission Impossible", "Year": "1996", "imdbID": "tt0117060"},
+            ],
+            "Response": "True"
+        }
 
-    def test_create_movie(self):
-        res = self.client.post("/cinemate/movies/", {"title": "Inception", "description": "Dreams", "release_date": "2010-07-16"})
-        self.assertEqual(res.status_code, 201)
+        url = reverse('omdb-movies')
+        response = self.client.get(url, {'q': 'mission impossible'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Title', response.json()[0])
+        self.assertEqual(response.json()[0]['Title'], 'Mission Impossible')
 
+    @patch('cinemate.serializers.requests.get')
+    def test_review_movie_details(self, mock_get):
+        # Create a review linked to a fake OMDb movie
+        movie = Movie.objects.create(
+            title="Mission Impossible",
+            description="A spy movie",
+            release_date="1996-05-22",
+            created_at="1996-05-22T00:00"
+        )
 
-    def test_create_review(self):
-        movie = Movie.objects.create(title="Interstellar", description="Space", release_date="2014-11-07")
-        res = self.client.post("/cinemate/reviews/", {"movie": movie.id, "rating": 5, "comment": "Amazing!"})
-        self.assertEqual(res.status_code, 201)
+        review = Review.objects.create(
+            movie=movie,
+            user=self.user,
+            rating=5,
+            comment="Great movie!"
+        )
+
+        # Mock OMDb response for serializer
+        mock_get.return_value.json.return_value = {
+            "Title": "Mission Impossible",
+            "Year": "1996",
+            "imdbID": "tt0117060"
+        }
+
+        url = reverse('review-list')  # DRF router default for ReviewViewSet
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]['movie_details']['Title'], "Mission Impossible")
+
+    def test_register_user(self):
+        url = reverse('register')
+        data = {
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password": "newpass123"
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(username="newuser").exists())

@@ -1,21 +1,25 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
 class Movie(models.Model):
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    release_date = models.DateTimeField(blank=True, null=True)
-    poster_url = models.URLField(blank=True, null=True)
-    tmdb_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
+    description = models.TextField()
+    release_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
     
 class Review(models.Model):
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='reviews')
+    movie_imdb_id = models.CharField(max_length=20)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    rating = models.IntegerField()
+    rating = models.IntegerField(
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5)
+        ])
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
